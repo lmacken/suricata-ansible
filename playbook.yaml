@@ -1,0 +1,33 @@
+# An ansible playbook for deploying the Suricata Intrustion Detection System
+# Author: Luke Macken <lmacken@redhat.com>
+
+- hosts: all
+  vars:
+     interface: wls3
+     snort_rules: http://rules.emergingthreats.net/open/suricata/emerging.rules.tar.gz
+
+  tasks:
+
+  # Install and configure suricata
+  - yum: pkg=suricata state=latest
+  - template: src=suricata.yaml.j2 dest=/etc/suricata/suricata.yaml owner=root mode=600
+  - service: name=suricata state=started
+  - template: src=sysconfig-suricata.j2 dest=/etc/sysconfig/suricata owner=root mode=600
+
+  # Install, configure, and run oinkmaster to update our snort rules
+  - get_url: url=http://prdownloads.sourceforge.net/oinkmaster/oinkmaster-2.0.tar.gz?download dest=/tmp/oinkmaster-2.0.tar.gz sha256sum=3d52f0426aa7c81b122cef22b80d708d8bb8337537e48754a065804f46c46162
+  - unarchive: src=/tmp/oinkmaster-2.0.tar.gz dest=/tmp/
+  - copy: src=/tmp/oinkmaster-2.0/oinkmaster.pl dest=/usr/local/bin/oinkmaster.pl
+  - template: src=oinkmaster.conf.j2 dest=/usr/local/etc/oinkmaster.conf
+
+  # oinkmaster needs wget
+  - yum: pkg=wget state=installed
+
+  # Update the snort rules
+  - command: /usr/local/bin/oinkmaster.pl -C /usr/local/etc/oinkmaster.conf -o /etc/suricata/rules
+    notify:
+    - restart suricata
+
+  handlers:
+    - name: restart suricata
+      service: name=suricata state=restarted

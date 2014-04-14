@@ -1,4 +1,5 @@
 suricata-ansible
 ================
 
-An ansible playbook for deploying the Suricata intrustion detection system
+An Ansible playbook for deploying the Suricata intrustion detection system and
+fetching Snort rules with Oinkmaster.
